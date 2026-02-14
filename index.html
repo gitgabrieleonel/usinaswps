@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WPS CONTROLE</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1><i class="fas fa-solar-panel"></i> Wps </h1>
+            <p>Gestão de Usinas Solares</p>
+        </header>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <p>Carregando...</p>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Navigation Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="orcamentos">
+                    <i class="fas fa-file-invoice"></i> Orçamentos
+                </button>
+                <button class="tab-btn" data-tab="usinas">
+                    <i class="fas fa-solar-panel"></i> Usinas
+                </button>
+                <button class="tab-btn" data-tab="concluidos">
+                    <i class="fas fa-check-circle"></i> Concluídos
+                </button>
+            </div>
+
+            <!-- Search Bar - aparece em todas as abas -->
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nome do cliente ou cidade...">
+            </div>
+
+            <!-- Date Filters (apenas na aba orçamentos) -->
+            <div class="date-filters" id="dateFilters">
+                <div class="date-input small">
+                    <label for="data-inicio">Data início</label>
+                    <input type="date" id="data-inicio">
+                </div>
+                <div class="date-input small">
+                    <label for="data-fim">Data fim</label>
+                    <input type="date" id="data-fim">
+                </div>
+                <button class="btn-filtrar small" onclick="aplicarFiltros()">
+                    <i class="fas fa-filter"></i> Filtrar
+                </button>
+                <button class="btn-limpar-filtros small" onclick="limparFiltros()">
+                    <i class="fas fa-times"></i> Limpar
+                </button>
+            </div>
+
+            <!-- Orçamentos Count (apenas na aba orçamentos) -->
+            <div class="orcamentos-count" id="orcamentos-count">
+                0 orçamento(s)
+            </div>
+
+            <!-- Dashboard Cards (apenas na aba usinas) -->
+            <div class="dashboard-cards" id="dashboardCards">
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-solar-panel"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-value" id="totalUsinas">0</span>
+                        <span class="card-label">Total de Usinas</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-value" id="kwhTotal">0</span>
+                        <span class="card-label">KWH Total</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-value" id="concluidas">0</span>
+                        <span class="card-label">Concluídas</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-icon">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                    <div class="card-info">
+                        <span class="card-value" id="emProgresso">0</span>
+                        <span class="card-label">Em Progresso</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usinas em Andamento (apenas na aba usinas) -->
+            <div class="section-header" id="usinasHeader">
+                <h2><i class="fas fa-chart-line"></i> Usinas em Andamento</h2>
+                <p class="section-subtitle">Quando o progresso chegar a 100%, a usina será movida para Concluídos</p>
+            </div>
+
+            <!-- Orçamentos Section -->
+            <section id="orcamentos-section" class="section active">
+                <div class="section-header orcamentos-header">
+                    <h2><i class="fas fa-file-invoice"></i> Orçamentos</h2>
+                    <p class="section-subtitle">Aprove um orçamento para enviá-lo à aba de Usinas</p>
+                </div>
+
+                <!-- Orçamentos List -->
+                <div class="orcamentos-list" id="orcamentos-list">
+                    <div class="empty-state">
+                        <i class="fas fa-file-invoice fa-3x"></i>
+                        <p>Nenhum orçamento cadastrado</p>
+                        <span>Clique em "Novo Orçamento" para começar</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Usinas Section -->
+            <section id="usinas-section" class="section">
+                <!-- Tabela de Usinas -->
+                <div class="table-container">
+                    <table class="usinas-table" id="usinas-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Cidade</th>
+                                <th>Data</th>
+                                <th>KWH</th>
+                                <th>ART</th>
+                                <th>Parecer de Acesso</th>
+                                <th>Material</th>
+                                <th>Estoque</th>
+                                <th>Instalado</th>
+                                <th>Progresso</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usinas-table-body">
+                            <tr>
+                                <td colspan="11" class="empty-table">
+                                    <i class="fas fa-solar-panel fa-3x"></i>
+                                    <p>Nenhuma usina em andamento</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Concluídos Section -->
+            <section id="concluidos-section" class="section">
+                <h2><i class="fas fa-check-circle"></i> Concluídos</h2>
+                <div class="table-container">
+                    <table class="concluidos-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Contato</th>
+                                <th>Cidade</th>
+                                <th>Data de Conclusão</th>
+                                <th>Valor</th>
+                                <th>Forma de Pagamento</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="concluidos-table-body">
+                            <tr>
+                                <td colspan="7" class="empty-table">
+                                    <i class="fas fa-check-circle fa-3x"></i>
+                                    <p>Nenhum projeto concluído</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Novo Orçamento Form Modal -->
+            <div class="modal" id="orcamento-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-plus-circle"></i> Novo Orçamento</h2>
+                        <button class="close-btn" onclick="fecharModal()">&times;</button>
+                    </div>
+                    
+                    <form id="orcamento-form">
+                        <div class="form-group">
+                            <label for="nome-cliente">Nome do Cliente</label>
+                            <input type="text" id="nome-cliente" placeholder="Ex: João Silva" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="contato">Contato</label>
+                            <input type="text" id="contato" placeholder="Ex: (11) 99999-9999" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cidade">Cidade</label>
+                                <input type="text" id="cidade" placeholder="Cidade" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="kwh">KWH</label>
+                                <input type="number" id="kwh" placeholder="KWH" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="valor">Valor do Orçamento (R$)</label>
+                            <input type="number" id="valor" placeholder="Ex: 25000" step="0.01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="prazo">Prazo de Pagamento</label>
+                            <select id="prazo" required>
+                                <option value="à vista">à vista</option>
+                                <option value="30 dias">30 dias</option>
+                                <option value="60 dias">60 dias</option>
+                                <option value="90 dias">90 dias</option>
+                                <option value="parcelado">parcelado</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="observacao">Observação</label>
+                            <textarea id="observacao" placeholder="Observações sobre o orçamento..." rows="3"></textarea>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                            <button type="submit" class="btn-salvar">Salvar Orçamento</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Floating Action Button -->
+            <button class="fab" onclick="abrirModal()">
+                <i class="fas fa-plus"></i>
+                <span>Novo Orçamento</span>
+            </button>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
