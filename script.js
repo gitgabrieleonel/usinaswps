@@ -15,6 +15,7 @@ const db = firebase.firestore();
 
 // Elementos do DOM
 const modal = document.getElementById('orcamento-modal');
+const modalEditar = document.getElementById('editar-orcamento-modal');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const orcamentosList = document.getElementById('orcamentos-list');
 const usinasTableBody = document.getElementById('usinas-table-body');
@@ -24,6 +25,7 @@ const dataInicio = document.getElementById('data-inicio');
 const dataFim = document.getElementById('data-fim');
 const searchInput = document.getElementById('searchInput');
 const form = document.getElementById('orcamento-form');
+const formEditar = document.getElementById('editar-orcamento-form');
 
 // Elementos do Dashboard
 const totalUsinasEl = document.getElementById('totalUsinas');
@@ -358,6 +360,136 @@ async function alternarStatus(usinaId, campo, valorAtual) {
     }
 }
 
+// FUNÇÕES DE EDIÇÃO DE ORÇAMENTO
+
+// Função para abrir modal de edição
+async function abrirModalEditar(id) {
+    showLoading();
+    
+    try {
+        // Buscar dados do orçamento no Firebase
+        const doc = await db.collection('orcamentos').doc(id).get();
+        
+        if (!doc.exists) {
+            mostrarNotificacao('Orçamento não encontrado', 'error');
+            return;
+        }
+        
+        const orcamento = doc.data();
+        
+        // Preencher formulário com os dados
+        document.getElementById('editar-id').value = id;
+        document.getElementById('editar-nome-cliente').value = orcamento.nomeCliente || '';
+        document.getElementById('editar-contato').value = orcamento.contato || '';
+        document.getElementById('editar-cidade').value = orcamento.cidade || '';
+        document.getElementById('editar-kwh').value = orcamento.kwh || '';
+        document.getElementById('editar-valor').value = orcamento.valor || '';
+        document.getElementById('editar-prazo').value = orcamento.prazo || 'à vista';
+        document.getElementById('editar-observacao').value = orcamento.observacao || '';
+        
+        // Abrir modal
+        modalEditar.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+    } catch (error) {
+        console.error('Erro ao carregar orçamento para edição:', error);
+        mostrarNotificacao('Erro ao carregar dados do orçamento', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Função para fechar modal de edição
+function fecharModalEditar() {
+    modalEditar.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    if (formEditar) formEditar.reset();
+}
+
+// Função para salvar alterações do orçamento
+async function salvarEdicao(event) {
+    event.preventDefault();
+    
+    showLoading();
+    
+    try {
+        const id = document.getElementById('editar-id').value;
+        
+        const orcamentoAtualizado = {
+            nomeCliente: document.getElementById('editar-nome-cliente').value,
+            contato: document.getElementById('editar-contato').value,
+            cidade: document.getElementById('editar-cidade').value,
+            kwh: document.getElementById('editar-kwh').value,
+            valor: document.getElementById('editar-valor').value,
+            prazo: document.getElementById('editar-prazo').value,
+            observacao: document.getElementById('editar-observacao').value,
+            dataEdicao: new Date().toISOString()
+        };
+        
+        // Atualizar no Firebase
+        await db.collection('orcamentos').doc(id).update(orcamentoAtualizado);
+        
+        // Fechar modal
+        fecharModalEditar();
+        
+        // Recarregar orçamentos
+        await carregarOrcamentos();
+        
+        mostrarNotificacao('Orçamento atualizado com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao atualizar orçamento:', error);
+        mostrarNotificacao('Erro ao atualizar orçamento', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Renderizar orçamentos (ATUALIZADO com botão de editar)
+function renderizarOrcamentos(orcamentos) {
+    if (!orcamentosList) return;
+    
+    if (orcamentos.length === 0) {
+        orcamentosList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-file-invoice fa-3x"></i>
+                <p>Nenhum orçamento cadastrado</p>
+                <span>Clique em "Novo Orçamento" para começar</span>
+            </div>
+        `;
+        return;
+    }
+    
+    orcamentosList.innerHTML = orcamentos.map(orc => `
+        <div class="orcamento-card" data-id="${orc.id}">
+            <div class="orcamento-header">
+                <h3><i class="fas fa-user"></i> ${orc.nomeCliente || ''}</h3>
+                <span class="status-badge status-pendente">Pendente</span>
+            </div>
+            <div class="orcamento-details">
+                <div><i class="fas fa-phone"></i> ${orc.contato || ''}</div>
+                <div><i class="fas fa-city"></i> ${orc.cidade || ''}</div>
+                <div><i class="fas fa-bolt"></i> ${orc.kwh || 0} KWH</div>
+                <div><i class="fas fa-dollar-sign"></i> R$ ${parseFloat(orc.valor || 0).toFixed(2)}</div>
+                <div><i class="fas fa-clock"></i> ${orc.prazo || 'à vista'}</div>
+                <div><i class="fas fa-calendar"></i> ${formatarData(orc.dataCriacao)}</div>
+            </div>
+            ${orc.observacao ? `<div class="observacao"><i class="fas fa-comment"></i> ${orc.observacao}</div>` : ''}
+            <div class="orcamento-actions">
+                <button class="btn-editar" onclick="abrirModalEditar('${orc.id}')">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button class="btn-aprovar" onclick="aprovarOrcamento('${orc.id}')">
+                    <i class="fas fa-check"></i> Aprovar
+                </button>
+                <button class="btn-rejeitar" onclick="rejeitarOrcamento('${orc.id}')">
+                    <i class="fas fa-times"></i> Rejeitar
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
 // Renderizar tabela de usinas
 function renderizarTabelaUsinas(usinas) {
     if (!usinasTableBody) return;
@@ -436,7 +568,7 @@ function renderizarTabelaUsinas(usinas) {
     }).join('');
 }
 
-// Renderizar tabela de concluídos - ATUALIZADA com as colunas solicitadas
+// Renderizar tabela de concluídos
 function renderizarTabelaConcluidos(concluidos) {
     if (!concluidosTableBody) return;
     
@@ -488,48 +620,6 @@ function atualizarDashboard(usinas) {
     emProgressoEl.textContent = emProgresso;
 }
 
-// Renderizar orçamentos
-function renderizarOrcamentos(orcamentos) {
-    if (!orcamentosList) return;
-    
-    if (orcamentos.length === 0) {
-        orcamentosList.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-file-invoice fa-3x"></i>
-                <p>Nenhum orçamento cadastrado</p>
-                <span>Clique em "Novo Orçamento" para começar</span>
-            </div>
-        `;
-        return;
-    }
-    
-    orcamentosList.innerHTML = orcamentos.map(orc => `
-        <div class="orcamento-card" data-id="${orc.id}">
-            <div class="orcamento-header">
-                <h3><i class="fas fa-user"></i> ${orc.nomeCliente || ''}</h3>
-                <span class="status-badge status-pendente">Pendente</span>
-            </div>
-            <div class="orcamento-details">
-                <div><i class="fas fa-phone"></i> ${orc.contato || ''}</div>
-                <div><i class="fas fa-city"></i> ${orc.cidade || ''}</div>
-                <div><i class="fas fa-bolt"></i> ${orc.kwh || 0} KWH</div>
-                <div><i class="fas fa-dollar-sign"></i> R$ ${parseFloat(orc.valor || 0).toFixed(2)}</div>
-                <div><i class="fas fa-clock"></i> ${orc.prazo || 'à vista'}</div>
-                <div><i class="fas fa-calendar"></i> ${formatarData(orc.dataCriacao)}</div>
-            </div>
-            ${orc.observacao ? `<div class="observacao"><i class="fas fa-comment"></i> ${orc.observacao}</div>` : ''}
-            <div class="orcamento-actions">
-                <button class="btn-aprovar" onclick="aprovarOrcamento('${orc.id}')">
-                    <i class="fas fa-check"></i> Aprovar
-                </button>
-                <button class="btn-rejeitar" onclick="rejeitarOrcamento('${orc.id}')">
-                    <i class="fas fa-times"></i> Rejeitar
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
 // Função para formatar data
 function formatarData(data) {
     if (!data) return 'Data não disponível';
@@ -568,6 +658,9 @@ function fecharModal() {
 window.addEventListener('click', (e) => {
     if (e.target === modal) {
         fecharModal();
+    }
+    if (e.target === modalEditar) {
+        fecharModalEditar();
     }
 });
 
@@ -611,6 +704,11 @@ if (form) {
             hideLoading();
         }
     });
+}
+
+// Event listener para o formulário de edição
+if (formEditar) {
+    formEditar.addEventListener('submit', salvarEdicao);
 }
 
 // Função para aprovar orçamento
@@ -802,6 +900,9 @@ document.addEventListener('keydown', (e) => {
         if (modal && modal.style.display === 'flex') {
             fecharModal();
         }
+        if (modalEditar && modalEditar.style.display === 'flex') {
+            fecharModalEditar();
+        }
     }
 });
 
@@ -812,5 +913,7 @@ window.aprovarOrcamento = aprovarOrcamento;
 window.rejeitarOrcamento = rejeitarOrcamento;
 window.abrirModal = abrirModal;
 window.fecharModal = fecharModal;
+window.abrirModalEditar = abrirModalEditar;
+window.fecharModalEditar = fecharModalEditar;
 window.aplicarFiltros = aplicarFiltros;
 window.limparFiltros = limparFiltros;
