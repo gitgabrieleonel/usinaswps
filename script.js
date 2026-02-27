@@ -1,919 +1,884 @@
-// Configuração do Firebase
-const firebaseConfig = {
-    apiKey: "AIzaSyCGjY_-zk9NV-EeC82idU_gsxMejCrlLeI",
-    authDomain: "controlesolar-92343.firebaseapp.com",
-    projectId: "controlesolar-92343",
-    storageBucket: "controlesolar-92343.firebasestorage.app",
-    messagingSenderId: "982365669692",
-    appId: "1:982365669692:web:72821077d36f19a341f639",
-    measurementId: "G-EWBQ7LVFZQ"
-};
-
-// Inicializar Firebase
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// Elementos do DOM
-const modal = document.getElementById('orcamento-modal');
-const modalEditar = document.getElementById('editar-orcamento-modal');
-const loadingOverlay = document.getElementById('loadingOverlay');
-const orcamentosList = document.getElementById('orcamentos-list');
-const usinasTableBody = document.getElementById('usinas-table-body');
-const concluidosTableBody = document.getElementById('concluidos-table-body');
-const orcamentosCount = document.getElementById('orcamentos-count');
-const dataInicio = document.getElementById('data-inicio');
-const dataFim = document.getElementById('data-fim');
-const searchInput = document.getElementById('searchInput');
-const form = document.getElementById('orcamento-form');
-const formEditar = document.getElementById('editar-orcamento-form');
-
-// Elementos do Dashboard
-const totalUsinasEl = document.getElementById('totalUsinas');
-const kwhTotalEl = document.getElementById('kwhTotal');
-const concluidasEl = document.getElementById('concluidas');
-const emProgressoEl = document.getElementById('emProgresso');
-
-// Estado da aplicação
-let filtrosAtivos = {
-    dataInicio: null,
-    dataFim: null
-};
-let termoBusca = '';
-let usinasAtuais = [];
-let concluidosAtuais = [];
-let orcamentosAtuais = [];
-
-// Configurar data atual nos inputs
-const hoje = new Date().toISOString().split('T')[0];
-if (dataInicio) dataInicio.value = hoje;
-if (dataFim) {
-    const fim = new Date();
-    fim.setDate(fim.getDate() + 30);
-    dataFim.value = fim.toISOString().split('T')[0];
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-// Mostrar/esconder loading
-function showLoading() {
-    if (loadingOverlay) loadingOverlay.classList.add('active');
+body {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+    min-height: 100vh;
 }
 
-function hideLoading() {
-    if (loadingOverlay) loadingOverlay.classList.remove('active');
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
 }
 
-// Event Listeners para as abas
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        
-        btn.classList.add('active');
-        const tabName = btn.dataset.tab;
-        const section = document.getElementById(`${tabName}-section`);
-        if (section) section.classList.add('active');
-        
-        // Mostrar/esconder elementos específicos por aba
-        toggleElementsByTab(tabName);
-        
-        // Carregar dados da aba selecionada
-        carregarDados(tabName);
-    });
-});
+/* Header */
+.header {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: white;
+    padding: 25px 30px;
+    border-radius: 15px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
 
-// Função para mostrar/esconder elementos por aba
-function toggleElementsByTab(tabName) {
-    const dateFilters = document.getElementById('dateFilters');
-    const orcamentosCount = document.getElementById('orcamentos-count');
-    const dashboardCards = document.getElementById('dashboardCards');
-    const usinasHeader = document.getElementById('usinasHeader');
-    
-    // Esconder todos primeiro
-    if (dateFilters) dateFilters.classList.add('hidden');
-    if (orcamentosCount) orcamentosCount.classList.add('hidden');
-    if (dashboardCards) dashboardCards.classList.add('hidden');
-    if (usinasHeader) usinasHeader.classList.add('hidden');
-    
-    // Mostrar baseado na aba ativa
-    switch(tabName) {
-        case 'orcamentos':
-            if (dateFilters) dateFilters.classList.remove('hidden');
-            if (orcamentosCount) orcamentosCount.classList.remove('hidden');
-            break;
-        case 'usinas':
-            if (dashboardCards) dashboardCards.classList.remove('hidden');
-            if (usinasHeader) usinasHeader.classList.remove('hidden');
-            break;
-        case 'concluidos':
-            // Não mostra elementos específicos
-            break;
+.header h1 {
+    font-size: 2.2em;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header h1 i {
+    color: #f1c40f;
+}
+
+.header p {
+    font-size: 1em;
+    opacity: 0.9;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 2000;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    color: #2c3e50;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn i {
+    font-size: 1em;
+}
+
+.tab-btn:hover {
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.tab-btn.active {
+    background: #3498db;
+    color: white;
+}
+
+/* Search Bar */
+.search-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #95a5a6;
+    font-size: 1.1em;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 15px 12px 45px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.95em;
+    transition: all 0.3s;
+    background: white;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+}
+
+/* Date Filters */
+.date-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.date-input.small {
+    width: 140px;
+}
+
+.date-input label {
+    display: block;
+    margin-bottom: 5px;
+    color: #7f8c8d;
+    font-size: 0.8em;
+    font-weight: 600;
+}
+
+.date-input input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9em;
+    transition: border-color 0.3s;
+}
+
+.date-input input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.btn-filtrar.small,
+.btn-limpar-filtros.small {
+    padding: 8px 15px;
+    font-size: 0.9em;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 38px;
+}
+
+.btn-filtrar.small {
+    background: #3498db;
+    color: white;
+}
+
+.btn-filtrar.small:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.btn-limpar-filtros.small {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-limpar-filtros.small:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+}
+
+/* Orçamentos Count */
+.orcamentos-count {
+    background: #2c3e50;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 0.95em;
+    font-weight: 600;
+    display: inline-block;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* Dashboard Cards */
+.dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.card {
+    background: linear-gradient(135deg, #ffffff, #f8f9fa);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.card-icon {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5em;
+}
+
+.card-info {
+    flex: 1;
+}
+
+.card-value {
+    display: block;
+    font-size: 1.8em;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.2;
+}
+
+.card-label {
+    display: block;
+    color: #7f8c8d;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Sections */
+.section {
+    display: none;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin-bottom: 25px;
+}
+
+.section.active {
+    display: block;
+}
+
+.section-header {
+    margin-bottom: 20px;
+}
+
+.section-header.orcamentos-header h2 {
+    font-size: 1.3em;
+}
+
+.section-header h2 {
+    color: #2c3e50;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2em;
+}
+
+.section-header h2 i {
+    color: #3498db;
+}
+
+.section-subtitle {
+    color: #7f8c8d;
+    font-size: 0.9em;
+    font-style: italic;
+    border-left: 3px solid #3498db;
+    padding-left: 12px;
+}
+
+/* Table Styles */
+.table-container {
+    background: white;
+    border-radius: 12px;
+    overflow-x: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin-top: 15px;
+}
+
+.usinas-table,
+.concluidos-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+.concluidos-table {
+    min-width: 800px;
+}
+
+.usinas-table th,
+.concluidos-table th {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: white;
+    padding: 12px 10px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.usinas-table th:first-child,
+.concluidos-table th:first-child {
+    border-top-left-radius: 12px;
+}
+
+.usinas-table th:last-child,
+.concluidos-table th:last-child {
+    border-top-right-radius: 12px;
+}
+
+.usinas-table td,
+.concluidos-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e9ecef;
+    color: #2c3e50;
+    font-size: 0.9em;
+}
+
+.usinas-table tbody tr:hover,
+.concluidos-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.usinas-table tbody tr:last-child td,
+.concluidos-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Empty Table */
+.empty-table {
+    text-align: center;
+    padding: 40px !important;
+    color: #95a5a6;
+}
+
+.empty-table i {
+    margin-bottom: 10px;
+    color: #bdc3c7;
+}
+
+.empty-table p {
+    font-size: 1em;
+    font-weight: 500;
+}
+
+/* Orçamentos List */
+.orcamentos-list {
+    min-height: 200px;
+}
+
+.orcamento-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 12px;
+    border-left: 4px solid #3498db;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: transform 0.3s;
+}
+
+.orcamento-card:hover {
+    transform: translateX(3px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.orcamento-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.orcamento-header h3 {
+    color: #2c3e50;
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 600;
+}
+
+.status-pendente {
+    background: #f39c12;
+    color: white;
+}
+
+.orcamento-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin: 10px 0;
+    font-size: 0.85em;
+    color: #5a6a7a;
+}
+
+.orcamento-details i {
+    width: 16px;
+    color: #3498db;
+    margin-right: 5px;
+}
+
+.observacao {
+    background: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-style: italic;
+    color: #5a6a7a;
+    font-size: 0.85em;
+}
+
+.orcamento-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.btn-aprovar, .btn-rejeitar {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-aprovar {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-aprovar:hover {
+    background: #2ecc71;
+    transform: translateY(-2px);
+}
+
+.btn-rejeitar {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-rejeitar:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+}
+
+/* Status Buttons */
+.status-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 15px;
+    font-size: 0.8em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 85px;
+    justify-content: center;
+}
+
+.status-btn.status-pendente {
+    background: #f39c12;
+    color: white;
+}
+
+.status-btn.status-concluido {
+    background: #27ae60;
+    color: white;
+}
+
+.status-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Progress Container */
+.progress-container {
+    position: relative;
+    width: 100px;
+    height: 22px;
+    background: #e9ecef;
+    border-radius: 11px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #3498db, #2ecc71);
+    border-radius: 11px;
+    transition: width 0.5s ease;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #2c3e50;
+    font-size: 0.7em;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+}
+
+/* Table Actions */
+.table-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-edit,
+.btn-delete {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85em;
+}
+
+.btn-edit {
+    background: #3498db;
+    color: white;
+}
+
+.btn-edit:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.btn-delete {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+    transform: translateY(-2px);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
     }
 }
 
-// Event listener para busca - CORRIGIDO
-if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-        termoBusca = e.target.value.toLowerCase().trim();
-        const tabAtiva = document.querySelector('.tab-btn.active')?.dataset.tab;
-        
-        if (!tabAtiva) return;
-        
-        switch(tabAtiva) {
-            case 'usinas':
-                filtrarUsinas();
-                break;
-            case 'concluidos':
-                filtrarConcluidos();
-                break;
-            case 'orcamentos':
-                filtrarOrcamentos();
-                break;
-        }
-    });
+.modal-header {
+    background: linear-gradient(135deg, #2c3e50, #3498db);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-// Função para filtrar usinas - CORRIGIDA
-function filtrarUsinas() {
-    if (!termoBusca || termoBusca === '') {
-        renderizarTabelaUsinas(usinasAtuais);
-        return;
+.modal-header h2 {
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.8em;
+    cursor: pointer;
+    transition: transform 0.3s;
+    line-height: 1;
+}
+
+.close-btn:hover {
+    transform: scale(1.2);
+}
+
+/* Form */
+#orcamento-form {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.85em;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    font-size: 0.9em;
+    transition: all 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btn-cancelar,
+.btn-salvar {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-cancelar {
+    background: #e9ecef;
+    color: #7f8c8d;
+}
+
+.btn-cancelar:hover {
+    background: #dee2e6;
+}
+
+.btn-salvar {
+    background: #3498db;
+    color: white;
+}
+
+.btn-salvar:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(52,152,219,0.3);
+}
+
+/* Floating Action Button */
+.fab {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background: linear-gradient(135deg, #3498db, #2c3e50);
+    color: white;
+    border: none;
+    border-radius: 40px;
+    padding: 12px 25px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 100;
+}
+
+.fab i {
+    font-size: 1.1em;
+}
+
+.fab:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(52,152,219,0.4);
+}
+
+/* Notifications */
+.notificacao {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 40px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 2000;
+    animation: slideIn 0.3s;
+    font-size: 0.9em;
+}
+
+/* Hide/Show elements */
+.hidden {
+    display: none !important;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .dashboard-cards {
+        grid-template-columns: repeat(2, 1fr);
     }
     
-    const filtradas = usinasAtuais.filter(usina => {
-        const nomeCliente = (usina.nomeCliente || '').toLowerCase();
-        const cidade = (usina.cidade || '').toLowerCase();
-        return nomeCliente.includes(termoBusca) || cidade.includes(termoBusca);
-    });
-    
-    renderizarTabelaUsinas(filtradas);
-}
-
-// Função para filtrar concluídos - CORRIGIDA
-function filtrarConcluidos() {
-    if (!termoBusca || termoBusca === '') {
-        renderizarTabelaConcluidos(concluidosAtuais);
-        return;
+    .date-filters {
+        flex-direction: column;
+        align-items: stretch;
     }
     
-    const filtradas = concluidosAtuais.filter(concluido => {
-        const nomeCliente = (concluido.nomeCliente || '').toLowerCase();
-        const cidade = (concluido.cidade || '').toLowerCase();
-        return nomeCliente.includes(termoBusca) || cidade.includes(termoBusca);
-    });
-    
-    renderizarTabelaConcluidos(filtradas);
-}
-
-// Função para filtrar orçamentos - CORRIGIDA
-function filtrarOrcamentos() {
-    if (!termoBusca || termoBusca === '') {
-        renderizarOrcamentos(orcamentosAtuais);
-        return;
-    }
-    
-    const filtrados = orcamentosAtuais.filter(orc => {
-        const nomeCliente = (orc.nomeCliente || '').toLowerCase();
-        const cidade = (orc.cidade || '').toLowerCase();
-        return nomeCliente.includes(termoBusca) || cidade.includes(termoBusca);
-    });
-    
-    renderizarOrcamentos(filtrados);
-}
-
-// Função para carregar dados baseado na aba
-async function carregarDados(tabName) {
-    showLoading();
-    try {
-        switch(tabName) {
-            case 'orcamentos':
-                await carregarOrcamentos();
-                break;
-            case 'usinas':
-                await carregarUsinas();
-                break;
-            case 'concluidos':
-                await carregarConcluidos();
-                break;
-        }
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        mostrarNotificacao('Erro ao carregar dados do Firebase', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Carregar orçamentos do Firebase
-async function carregarOrcamentos() {
-    try {
-        let query = db.collection('orcamentos').where('status', '==', 'pendente');
-        
-        // Aplicar filtros de data
-        if (filtrosAtivos.dataInicio) {
-            const inicio = new Date(filtrosAtivos.dataInicio);
-            inicio.setHours(0, 0, 0, 0);
-            query = query.where('dataCriacao', '>=', inicio.toISOString());
-        }
-        
-        if (filtrosAtivos.dataFim) {
-            const fim = new Date(filtrosAtivos.dataFim);
-            fim.setHours(23, 59, 59, 999);
-            query = query.where('dataCriacao', '<=', fim.toISOString());
-        }
-        
-        const snapshot = await query.get();
-        orcamentosAtuais = [];
-        
-        snapshot.forEach(doc => {
-            orcamentosAtuais.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
-        
-        // Aplicar busca se houver termo
-        if (termoBusca) {
-            filtrarOrcamentos();
-        } else {
-            renderizarOrcamentos(orcamentosAtuais);
-        }
-        
-        atualizarContadorOrcamentos(orcamentosAtuais.length);
-    } catch (error) {
-        console.error('Erro ao carregar orçamentos:', error);
-        throw error;
-    }
-}
-
-// Carregar usinas do Firebase
-async function carregarUsinas() {
-    try {
-        const snapshot = await db.collection('orcamentos')
-            .where('status', '==', 'aprovado')
-            .get();
-        
-        usinasAtuais = [];
-        snapshot.forEach(doc => {
-            usinasAtuais.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
-        
-        // Aplicar busca se houver termo
-        if (termoBusca) {
-            filtrarUsinas();
-        } else {
-            renderizarTabelaUsinas(usinasAtuais);
-        }
-        
-        atualizarDashboard(usinasAtuais);
-    } catch (error) {
-        console.error('Erro ao carregar usinas:', error);
-        throw error;
-    }
-}
-
-// Carregar concluídos do Firebase
-async function carregarConcluidos() {
-    try {
-        const snapshot = await db.collection('orcamentos')
-            .where('status', '==', 'concluido')
-            .get();
-        
-        concluidosAtuais = [];
-        snapshot.forEach(doc => {
-            concluidosAtuais.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
-        
-        // Aplicar busca se houver termo
-        if (termoBusca) {
-            filtrarConcluidos();
-        } else {
-            renderizarTabelaConcluidos(concluidosAtuais);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar concluídos:', error);
-        throw error;
+    .date-input.small {
+        width: 100%;
     }
 }
 
-// Função para alternar status de um item
-async function alternarStatus(usinaId, campo, valorAtual) {
-    showLoading();
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
     
-    try {
-        // Alternar entre Pendente e Concluído
-        const novoValor = valorAtual === 'Pendente' ? 'Concluído' : 'Pendente';
-        
-        // Buscar dados atuais da usina
-        const docRef = db.collection('orcamentos').doc(usinaId);
-        
-        // Atualizar o campo específico
-        await docRef.update({
-            [campo]: novoValor
-        });
-        
-        // Buscar dados atualizados
-        const docAtualizado = await docRef.get();
-        const usinaAtualizada = docAtualizado.data();
-        
-        // Contar quantos campos estão como "Concluído"
-        const campos = ['art', 'parecerAcesso', 'material', 'estoque', 'instalado'];
-        let conclusoes = 0;
-        
-        campos.forEach(c => {
-            if (usinaAtualizada[c] === 'Concluído') {
-                conclusoes++;
-            }
-        });
-        
-        // Calcular progresso (cada conclusão = 20%)
-        const novoProgresso = conclusoes * 20;
-        
-        // Atualizar progresso
-        await docRef.update({
-            progresso: novoProgresso
-        });
-        
-        // Se progresso for 100%, mover para concluídos
-        if (novoProgresso === 100) {
-            await docRef.update({
-                status: 'concluido',
-                dataConclusao: new Date().toISOString()
-            });
-            
-            mostrarNotificacao('Usina concluída! Movida para a aba Concluídos.', 'success');
-        }
-        
-        // Recarregar dados da aba atual
-        const tabAtiva = document.querySelector('.tab-btn.active').dataset.tab;
-        await carregarDados(tabAtiva);
-        
-    } catch (error) {
-        console.error('Erro ao alternar status:', error);
-        mostrarNotificacao('Erro ao atualizar status', 'error');
-    } finally {
-        hideLoading();
+    .header {
+        padding: 20px;
+    }
+    
+    .header h1 {
+        font-size: 1.8em;
+    }
+    
+    .tabs {
+        flex-direction: column;
+    }
+    
+    .tab-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .dashboard-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .fab span {
+        display: none;
+    }
+    
+    .fab {
+        padding: 12px;
+        border-radius: 50%;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
     }
 }
-
-// FUNÇÕES DE EDIÇÃO DE ORÇAMENTO
-
-// Função para abrir modal de edição
-async function abrirModalEditar(id) {
-    showLoading();
-    
-    try {
-        // Buscar dados do orçamento no Firebase
-        const doc = await db.collection('orcamentos').doc(id).get();
-        
-        if (!doc.exists) {
-            mostrarNotificacao('Orçamento não encontrado', 'error');
-            return;
-        }
-        
-        const orcamento = doc.data();
-        
-        // Preencher formulário com os dados
-        document.getElementById('editar-id').value = id;
-        document.getElementById('editar-nome-cliente').value = orcamento.nomeCliente || '';
-        document.getElementById('editar-contato').value = orcamento.contato || '';
-        document.getElementById('editar-cidade').value = orcamento.cidade || '';
-        document.getElementById('editar-kwh').value = orcamento.kwh || '';
-        document.getElementById('editar-valor').value = orcamento.valor || '';
-        document.getElementById('editar-prazo').value = orcamento.prazo || 'à vista';
-        document.getElementById('editar-observacao').value = orcamento.observacao || '';
-        
-        // Abrir modal
-        modalEditar.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        
-    } catch (error) {
-        console.error('Erro ao carregar orçamento para edição:', error);
-        mostrarNotificacao('Erro ao carregar dados do orçamento', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Função para fechar modal de edição
-function fecharModalEditar() {
-    modalEditar.style.display = 'none';
-    document.body.style.overflow = 'auto';
-    if (formEditar) formEditar.reset();
-}
-
-// Função para salvar alterações do orçamento
-async function salvarEdicao(event) {
-    event.preventDefault();
-    
-    showLoading();
-    
-    try {
-        const id = document.getElementById('editar-id').value;
-        
-        const orcamentoAtualizado = {
-            nomeCliente: document.getElementById('editar-nome-cliente').value,
-            contato: document.getElementById('editar-contato').value,
-            cidade: document.getElementById('editar-cidade').value,
-            kwh: document.getElementById('editar-kwh').value,
-            valor: document.getElementById('editar-valor').value,
-            prazo: document.getElementById('editar-prazo').value,
-            observacao: document.getElementById('editar-observacao').value,
-            dataEdicao: new Date().toISOString()
-        };
-        
-        // Atualizar no Firebase
-        await db.collection('orcamentos').doc(id).update(orcamentoAtualizado);
-        
-        // Fechar modal
-        fecharModalEditar();
-        
-        // Recarregar orçamentos
-        await carregarOrcamentos();
-        
-        mostrarNotificacao('Orçamento atualizado com sucesso!', 'success');
-        
-    } catch (error) {
-        console.error('Erro ao atualizar orçamento:', error);
-        mostrarNotificacao('Erro ao atualizar orçamento', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Renderizar orçamentos (ATUALIZADO com botão de editar)
-function renderizarOrcamentos(orcamentos) {
-    if (!orcamentosList) return;
-    
-    if (orcamentos.length === 0) {
-        orcamentosList.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-file-invoice fa-3x"></i>
-                <p>Nenhum orçamento cadastrado</p>
-                <span>Clique em "Novo Orçamento" para começar</span>
-            </div>
-        `;
-        return;
-    }
-    
-    orcamentosList.innerHTML = orcamentos.map(orc => `
-        <div class="orcamento-card" data-id="${orc.id}">
-            <div class="orcamento-header">
-                <h3><i class="fas fa-user"></i> ${orc.nomeCliente || ''}</h3>
-                <span class="status-badge status-pendente">Pendente</span>
-            </div>
-            <div class="orcamento-details">
-                <div><i class="fas fa-phone"></i> ${orc.contato || ''}</div>
-                <div><i class="fas fa-city"></i> ${orc.cidade || ''}</div>
-                <div><i class="fas fa-bolt"></i> ${orc.kwh || 0} KWH</div>
-                <div><i class="fas fa-dollar-sign"></i> R$ ${parseFloat(orc.valor || 0).toFixed(2)}</div>
-                <div><i class="fas fa-clock"></i> ${orc.prazo || 'à vista'}</div>
-                <div><i class="fas fa-calendar"></i> ${formatarData(orc.dataCriacao)}</div>
-            </div>
-            ${orc.observacao ? `<div class="observacao"><i class="fas fa-comment"></i> ${orc.observacao}</div>` : ''}
-            <div class="orcamento-actions">
-                <button class="btn-editar" onclick="abrirModalEditar('${orc.id}')">
-                    <i class="fas fa-edit"></i> Editar
-                </button>
-                <button class="btn-aprovar" onclick="aprovarOrcamento('${orc.id}')">
-                    <i class="fas fa-check"></i> Aprovar
-                </button>
-                <button class="btn-rejeitar" onclick="rejeitarOrcamento('${orc.id}')">
-                    <i class="fas fa-times"></i> Rejeitar
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Renderizar tabela de usinas
-function renderizarTabelaUsinas(usinas) {
-    if (!usinasTableBody) return;
-    
-    if (usinas.length === 0) {
-        usinasTableBody.innerHTML = `
-            <tr>
-                <td colspan="11" class="empty-table">
-                    <i class="fas fa-solar-panel fa-3x"></i>
-                    <p>Nenhuma usina em andamento</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    usinasTableBody.innerHTML = usinas.map(usina => {
-        const progresso = usina.progresso || 0;
-        const art = usina.art || 'Pendente';
-        const parecer = usina.parecerAcesso || 'Pendente';
-        const material = usina.material || 'Pendente';
-        const estoque = usina.estoque || 'Pendente';
-        const instalado = usina.instalado || 'Pendente';
-        
-        return `
-            <tr>
-                <td><strong>${usina.nomeCliente || ''}</strong></td>
-                <td>${usina.cidade || ''}</td>
-                <td>${formatarData(usina.dataCriacao)}</td>
-                <td>${usina.kwh || 0} KWH</td>
-                <td>
-                    <button class="status-btn ${art === 'Concluído' ? 'status-concluido' : 'status-pendente'}" 
-                            onclick="alternarStatus('${usina.id}', 'art', '${art}')">
-                        ${art === 'Concluído' ? '✔' : '○'} ${art}
-                    </button>
-                </td>
-                <td>
-                    <button class="status-btn ${parecer === 'Concluído' ? 'status-concluido' : 'status-pendente'}" 
-                            onclick="alternarStatus('${usina.id}', 'parecerAcesso', '${parecer}')">
-                        ${parecer === 'Concluído' ? '✔' : '○'} ${parecer}
-                    </button>
-                </td>
-                <td>
-                    <button class="status-btn ${material === 'Concluído' ? 'status-concluido' : 'status-pendente'}" 
-                            onclick="alternarStatus('${usina.id}', 'material', '${material}')">
-                        ${material === 'Concluído' ? '✔' : '○'} ${material}
-                    </button>
-                </td>
-                <td>
-                    <button class="status-btn ${estoque === 'Concluído' ? 'status-concluido' : 'status-pendente'}" 
-                            onclick="alternarStatus('${usina.id}', 'estoque', '${estoque}')">
-                        ${estoque === 'Concluído' ? '✔' : '○'} ${estoque}
-                    </button>
-                </td>
-                <td>
-                    <button class="status-btn ${instalado === 'Concluído' ? 'status-concluido' : 'status-pendente'}" 
-                            onclick="alternarStatus('${usina.id}', 'instalado', '${instalado}')">
-                        ${instalado === 'Concluído' ? '✔' : '○'} ${instalado}
-                    </button>
-                </td>
-                <td>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: ${progresso}%"></div>
-                        <span class="progress-text">${progresso}%</span>
-                    </div>
-                </td>
-                <td>
-                    <div class="table-actions">
-                        <button class="btn-delete" onclick="excluirProjeto('${usina.id}', event)">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// Renderizar tabela de concluídos
-function renderizarTabelaConcluidos(concluidos) {
-    if (!concluidosTableBody) return;
-    
-    if (concluidos.length === 0) {
-        concluidosTableBody.innerHTML = `
-            <tr>
-                <td colspan="7" class="empty-table">
-                    <i class="fas fa-check-circle fa-3x"></i>
-                    <p>Nenhum projeto concluído</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    concluidosTableBody.innerHTML = concluidos.map(concluido => {
-        return `
-            <tr>
-                <td><strong>${concluido.nomeCliente || ''}</strong></td>
-                <td>${concluido.contato || ''}</td>
-                <td>${concluido.cidade || ''}</td>
-                <td>${formatarData(concluido.dataConclusao || concluido.dataCriacao)}</td>
-                <td>R$ ${parseFloat(concluido.valor || 0).toFixed(2)}</td>
-                <td>${concluido.prazo || 'à vista'}</td>
-                <td>
-                    <div class="table-actions">
-                        <button class="btn-delete" onclick="excluirProjeto('${concluido.id}', event)">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// Atualizar dashboard
-function atualizarDashboard(usinas) {
-    if (!totalUsinasEl || !kwhTotalEl || !concluidasEl || !emProgressoEl) return;
-    
-    const total = usinas.length;
-    const kwhTotal = usinas.reduce((acc, usina) => acc + parseFloat(usina.kwh || 0), 0);
-    const concluidas = usinas.filter(u => u.progresso === 100).length;
-    const emProgresso = total - concluidas;
-    
-    totalUsinasEl.textContent = total;
-    kwhTotalEl.textContent = kwhTotal.toFixed(0);
-    concluidasEl.textContent = concluidas;
-    emProgressoEl.textContent = emProgresso;
-}
-
-// Função para formatar data
-function formatarData(data) {
-    if (!data) return 'Data não disponível';
-    try {
-        return new Date(data).toLocaleDateString('pt-BR');
-    } catch {
-        return 'Data inválida';
-    }
-}
-
-// Função para atualizar contador de orçamentos
-function atualizarContadorOrcamentos(count) {
-    if (orcamentosCount) {
-        orcamentosCount.textContent = `${count} orçamento${count !== 1 ? 's' : ''}`;
-    }
-}
-
-// Função para abrir o modal de orçamento
-function abrirModal() {
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-// Função para fechar o modal de orçamento
-function fecharModal() {
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-        if (form) form.reset();
-    }
-}
-
-// Fechar modal ao clicar fora
-window.addEventListener('click', (e) => {
-    if (e.target === modal) {
-        fecharModal();
-    }
-    if (e.target === modalEditar) {
-        fecharModalEditar();
-    }
-});
-
-// Função para salvar orçamento no Firebase
-if (form) {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        showLoading();
-        
-        try {
-            const orcamento = {
-                nomeCliente: document.getElementById('nome-cliente').value,
-                contato: document.getElementById('contato').value,
-                cidade: document.getElementById('cidade').value,
-                kwh: document.getElementById('kwh').value,
-                valor: document.getElementById('valor').value,
-                prazo: document.getElementById('prazo').value,
-                observacao: document.getElementById('observacao').value,
-                status: 'pendente',
-                progresso: 0,
-                art: 'Pendente',
-                parecerAcesso: 'Pendente',
-                material: 'Pendente',
-                estoque: 'Pendente',
-                instalado: 'Pendente',
-                dataCriacao: new Date().toISOString()
-            };
-            
-            await db.collection('orcamentos').add(orcamento);
-            
-            // Recarregar orçamentos
-            await carregarOrcamentos();
-            
-            fecharModal();
-            mostrarNotificacao('Orçamento salvo com sucesso!', 'success');
-        } catch (error) {
-            console.error('Erro ao salvar orçamento:', error);
-            mostrarNotificacao('Erro ao salvar orçamento', 'error');
-        } finally {
-            hideLoading();
-        }
-    });
-}
-
-// Event listener para o formulário de edição
-if (formEditar) {
-    formEditar.addEventListener('submit', salvarEdicao);
-}
-
-// Função para aprovar orçamento
-async function aprovarOrcamento(id) {
-    if (!confirm('Deseja aprovar este orçamento?')) return;
-    
-    showLoading();
-    
-    try {
-        await db.collection('orcamentos').doc(id).update({
-            status: 'aprovado',
-            dataAprovacao: new Date().toISOString()
-        });
-        
-        // Recarregar dados da aba atual
-        const tabAtiva = document.querySelector('.tab-btn.active').dataset.tab;
-        await carregarDados(tabAtiva);
-        
-        mostrarNotificacao('Orçamento aprovado com sucesso!', 'success');
-    } catch (error) {
-        console.error('Erro ao aprovar orçamento:', error);
-        mostrarNotificacao('Erro ao aprovar orçamento', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Função para rejeitar orçamento
-async function rejeitarOrcamento(id) {
-    if (!confirm('Tem certeza que deseja rejeitar este orçamento?')) return;
-    
-    showLoading();
-    
-    try {
-        await db.collection('orcamentos').doc(id).delete();
-        
-        // Recarregar dados da aba atual
-        const tabAtiva = document.querySelector('.tab-btn.active').dataset.tab;
-        await carregarDados(tabAtiva);
-        
-        mostrarNotificacao('Orçamento rejeitado!', 'info');
-    } catch (error) {
-        console.error('Erro ao rejeitar orçamento:', error);
-        mostrarNotificacao('Erro ao rejeitar orçamento', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Função para excluir projeto
-async function excluirProjeto(id, event) {
-    if (event) {
-        event.stopPropagation();
-    }
-    
-    if (!confirm('Tem certeza que deseja excluir este projeto permanentemente?')) return;
-    
-    showLoading();
-    
-    try {
-        await db.collection('orcamentos').doc(id).delete();
-        
-        // Recarregar dados da aba atual
-        const tabAtiva = document.querySelector('.tab-btn.active').dataset.tab;
-        await carregarDados(tabAtiva);
-        
-        mostrarNotificacao('Projeto excluído com sucesso!', 'info');
-    } catch (error) {
-        console.error('Erro ao excluir projeto:', error);
-        mostrarNotificacao('Erro ao excluir projeto', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Função para aplicar filtros
-async function aplicarFiltros() {
-    filtrosAtivos = {
-        dataInicio: dataInicio.value,
-        dataFim: dataFim.value
-    };
-    
-    showLoading();
-    try {
-        await carregarOrcamentos();
-        mostrarNotificacao('Filtros aplicados!', 'success');
-    } catch (error) {
-        console.error('Erro ao aplicar filtros:', error);
-        mostrarNotificacao('Erro ao aplicar filtros', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Função para limpar filtros
-async function limparFiltros() {
-    filtrosAtivos = {
-        dataInicio: null,
-        dataFim: null
-    };
-    
-    if (dataInicio) dataInicio.value = hoje;
-    if (dataFim) {
-        const fim = new Date();
-        fim.setDate(fim.getDate() + 30);
-        dataFim.value = fim.toISOString().split('T')[0];
-    }
-    
-    showLoading();
-    try {
-        await carregarOrcamentos();
-        mostrarNotificacao('Filtros removidos!', 'info');
-    } catch (error) {
-        console.error('Erro ao limpar filtros:', error);
-        mostrarNotificacao('Erro ao limpar filtros', 'error');
-    } finally {
-        hideLoading();
-    }
-}
-
-// Função para mostrar notificações
-function mostrarNotificacao(mensagem, tipo = 'info') {
-    const notificacao = document.createElement('div');
-    notificacao.className = `notificacao ${tipo}`;
-    
-    let icone, cor;
-    switch(tipo) {
-        case 'success':
-            icone = 'fa-check-circle';
-            cor = '#27ae60';
-            break;
-        case 'error':
-            icone = 'fa-exclamation-circle';
-            cor = '#e74c3c';
-            break;
-        default:
-            icone = 'fa-info-circle';
-            cor = '#3498db';
-    }
-    
-    notificacao.innerHTML = `
-        <i class="fas ${icone}"></i>
-        <span>${mensagem}</span>
-    `;
-    
-    notificacao.style.position = 'fixed';
-    notificacao.style.bottom = '20px';
-    notificacao.style.left = '50%';
-    notificacao.style.transform = 'translateX(-50%)';
-    notificacao.style.backgroundColor = cor;
-    notificacao.style.color = 'white';
-    notificacao.style.padding = '10px 20px';
-    notificacao.style.borderRadius = '40px';
-    notificacao.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
-    notificacao.style.display = 'flex';
-    notificacao.style.alignItems = 'center';
-    notificacao.style.gap = '8px';
-    notificacao.style.zIndex = '2000';
-    notificacao.style.fontSize = '0.9em';
-    notificacao.style.animation = 'slideIn 0.3s';
-    
-    document.body.appendChild(notificacao);
-    
-    setTimeout(() => {
-        notificacao.style.animation = 'fadeOut 0.3s';
-        setTimeout(() => {
-            if (document.body.contains(notificacao)) {
-                document.body.removeChild(notificacao);
-            }
-        }, 300);
-    }, 3000);
-}
-
-// Inicializar a aplicação
-document.addEventListener('DOMContentLoaded', () => {
-    // Esconder elementos específicos inicialmente
-    const dashboardCards = document.getElementById('dashboardCards');
-    const usinasHeader = document.getElementById('usinasHeader');
-    
-    if (dashboardCards) dashboardCards.classList.add('hidden');
-    if (usinasHeader) usinasHeader.classList.add('hidden');
-    
-    carregarOrcamentos();
-});
-
-// Fechar modal com tecla ESC
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        if (modal && modal.style.display === 'flex') {
-            fecharModal();
-        }
-        if (modalEditar && modalEditar.style.display === 'flex') {
-            fecharModalEditar();
-        }
-    }
-});
-
-// Tornar funções globais para acesso pelo onclick
-window.alternarStatus = alternarStatus;
-window.excluirProjeto = excluirProjeto;
-window.aprovarOrcamento = aprovarOrcamento;
-window.rejeitarOrcamento = rejeitarOrcamento;
-window.abrirModal = abrirModal;
-window.fecharModal = fecharModal;
-window.abrirModalEditar = abrirModalEditar;
-window.fecharModalEditar = fecharModalEditar;
-window.aplicarFiltros = aplicarFiltros;
-window.limparFiltros = limparFiltros;
