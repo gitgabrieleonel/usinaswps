@@ -255,6 +255,123 @@
                 </div>
             </div>
 
+            <!-- Modal de Edição de Usina -->
+            <div class="modal" id="editar-usina-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-edit"></i> Editar Usina</h2>
+                        <button class="close-btn" onclick="fecharModalEditarUsina()">&times;</button>
+                    </div>
+                    
+                    <form id="editar-usina-form">
+                        <input type="hidden" id="editar-usina-id">
+                        
+                        <div class="form-group">
+                            <label for="editar-usina-nome">Nome do Cliente</label>
+                            <input type="text" id="editar-usina-nome" placeholder="Ex: João Silva" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editar-usina-contato">Contato</label>
+                            <input type="text" id="editar-usina-contato" placeholder="Ex: (11) 99999-9999" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editar-usina-cidade">Cidade</label>
+                                <input type="text" id="editar-usina-cidade" placeholder="Cidade" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editar-usina-kwh">KWH</label>
+                                <input type="number" id="editar-usina-kwh" placeholder="KWH" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editar-usina-valor">Valor (R$)</label>
+                            <input type="number" id="editar-usina-valor" placeholder="Ex: 25000" step="0.01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editar-usina-prazo">Forma de Pagamento</label>
+                            <select id="editar-usina-prazo" required>
+                                <option value="à vista">à vista</option>
+                                <option value="30 dias">30 dias</option>
+                                <option value="60 dias">60 dias</option>
+                                <option value="90 dias">90 dias</option>
+                                <option value="parcelado">parcelado</option>
+                            </select>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn-cancelar" onclick="fecharModalEditarUsina()">Cancelar</button>
+                            <button type="submit" class="btn-salvar">Salvar Alterações</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal de Edição de Concluído -->
+            <div class="modal" id="editar-concluido-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-edit"></i> Editar Projeto Concluído</h2>
+                        <button class="close-btn" onclick="fecharModalEditarConcluido()">&times;</button>
+                    </div>
+                    
+                    <form id="editar-concluido-form">
+                        <input type="hidden" id="editar-concluido-id">
+                        
+                        <div class="form-group">
+                            <label for="editar-concluido-nome">Nome do Cliente</label>
+                            <input type="text" id="editar-concluido-nome" placeholder="Ex: João Silva" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editar-concluido-contato">Contato</label>
+                            <input type="text" id="editar-concluido-contato" placeholder="Ex: (11) 99999-9999" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="editar-concluido-cidade">Cidade</label>
+                                <input type="text" id="editar-concluido-cidade" placeholder="Cidade" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editar-concluido-kwh">KWH</label>
+                                <input type="number" id="editar-concluido-kwh" placeholder="KWH" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editar-concluido-valor">Valor (R$)</label>
+                            <input type="number" id="editar-concluido-valor" placeholder="Ex: 25000" step="0.01" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editar-concluido-prazo">Forma de Pagamento</label>
+                            <select id="editar-concluido-prazo" required>
+                                <option value="à vista">à vista</option>
+                                <option value="30 dias">30 dias</option>
+                                <option value="60 dias">60 dias</option>
+                                <option value="90 dias">90 dias</option>
+                                <option value="parcelado">parcelado</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editar-concluido-data">Data de Conclusão</label>
+                            <input type="date" id="editar-concluido-data" required>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn-cancelar" onclick="fecharModalEditarConcluido()">Cancelar</button>
+                            <button type="submit" class="btn-salvar">Salvar Alterações</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Novo Orçamento Form Modal -->
             <div class="modal" id="orcamento-modal">
                 <div class="modal-content">
