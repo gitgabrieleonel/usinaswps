@@ -16,6 +16,8 @@ const db = firebase.firestore();
 // Elementos do DOM
 const modal = document.getElementById('orcamento-modal');
 const modalEditar = document.getElementById('editar-orcamento-modal');
+const modalEditarUsina = document.getElementById('editar-usina-modal');
+const modalEditarConcluido = document.getElementById('editar-concluido-modal');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const orcamentosList = document.getElementById('orcamentos-list');
 const usinasTableBody = document.getElementById('usinas-table-body');
@@ -26,6 +28,8 @@ const dataFim = document.getElementById('data-fim');
 const searchInput = document.getElementById('searchInput');
 const form = document.getElementById('orcamento-form');
 const formEditar = document.getElementById('editar-orcamento-form');
+const formEditarUsina = document.getElementById('editar-usina-form');
+const formEditarConcluido = document.getElementById('editar-concluido-form');
 
 // Elementos do Dashboard
 const totalUsinasEl = document.getElementById('totalUsinas');
@@ -131,7 +135,7 @@ if (searchInput) {
     });
 }
 
-// Função para filtrar usinas - CORRIGIDA
+// Função para filtrar usinas
 function filtrarUsinas() {
     if (!termoBusca || termoBusca === '') {
         renderizarTabelaUsinas(usinasAtuais);
@@ -147,7 +151,7 @@ function filtrarUsinas() {
     renderizarTabelaUsinas(filtradas);
 }
 
-// Função para filtrar concluídos - CORRIGIDA
+// Função para filtrar concluídos
 function filtrarConcluidos() {
     if (!termoBusca || termoBusca === '') {
         renderizarTabelaConcluidos(concluidosAtuais);
@@ -163,7 +167,7 @@ function filtrarConcluidos() {
     renderizarTabelaConcluidos(filtradas);
 }
 
-// Função para filtrar orçamentos - CORRIGIDA
+// Função para filtrar orçamentos
 function filtrarOrcamentos() {
     if (!termoBusca || termoBusca === '') {
         renderizarOrcamentos(orcamentosAtuais);
@@ -360,14 +364,13 @@ async function alternarStatus(usinaId, campo, valorAtual) {
     }
 }
 
-// FUNÇÕES DE EDIÇÃO DE ORÇAMENTO
+// ========== FUNÇÕES DE EDIÇÃO DE ORÇAMENTO ==========
 
-// Função para abrir modal de edição
+// Função para abrir modal de edição de orçamento
 async function abrirModalEditar(id) {
     showLoading();
     
     try {
-        // Buscar dados do orçamento no Firebase
         const doc = await db.collection('orcamentos').doc(id).get();
         
         if (!doc.exists) {
@@ -377,7 +380,6 @@ async function abrirModalEditar(id) {
         
         const orcamento = doc.data();
         
-        // Preencher formulário com os dados
         document.getElementById('editar-id').value = id;
         document.getElementById('editar-nome-cliente').value = orcamento.nomeCliente || '';
         document.getElementById('editar-contato').value = orcamento.contato || '';
@@ -387,19 +389,18 @@ async function abrirModalEditar(id) {
         document.getElementById('editar-prazo').value = orcamento.prazo || 'à vista';
         document.getElementById('editar-observacao').value = orcamento.observacao || '';
         
-        // Abrir modal
         modalEditar.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         
     } catch (error) {
-        console.error('Erro ao carregar orçamento para edição:', error);
-        mostrarNotificacao('Erro ao carregar dados do orçamento', 'error');
+        console.error('Erro ao carregar orçamento:', error);
+        mostrarNotificacao('Erro ao carregar dados', 'error');
     } finally {
         hideLoading();
     }
 }
 
-// Função para fechar modal de edição
+// Função para fechar modal de edição de orçamento
 function fecharModalEditar() {
     modalEditar.style.display = 'none';
     document.body.style.overflow = 'auto';
@@ -409,12 +410,10 @@ function fecharModalEditar() {
 // Função para salvar alterações do orçamento
 async function salvarEdicao(event) {
     event.preventDefault();
-    
     showLoading();
     
     try {
         const id = document.getElementById('editar-id').value;
-        
         const orcamentoAtualizado = {
             nomeCliente: document.getElementById('editar-nome-cliente').value,
             contato: document.getElementById('editar-contato').value,
@@ -426,15 +425,9 @@ async function salvarEdicao(event) {
             dataEdicao: new Date().toISOString()
         };
         
-        // Atualizar no Firebase
         await db.collection('orcamentos').doc(id).update(orcamentoAtualizado);
-        
-        // Fechar modal
         fecharModalEditar();
-        
-        // Recarregar orçamentos
         await carregarOrcamentos();
-        
         mostrarNotificacao('Orçamento atualizado com sucesso!', 'success');
         
     } catch (error) {
@@ -444,6 +437,164 @@ async function salvarEdicao(event) {
         hideLoading();
     }
 }
+
+// ========== FUNÇÕES DE EDIÇÃO DE USINA ==========
+
+// Função para abrir modal de edição de usina
+async function abrirModalEditarUsina(id) {
+    showLoading();
+    
+    try {
+        const doc = await db.collection('orcamentos').doc(id).get();
+        
+        if (!doc.exists) {
+            mostrarNotificacao('Usina não encontrada', 'error');
+            return;
+        }
+        
+        const usina = doc.data();
+        
+        document.getElementById('editar-usina-id').value = id;
+        document.getElementById('editar-usina-nome').value = usina.nomeCliente || '';
+        document.getElementById('editar-usina-contato').value = usina.contato || '';
+        document.getElementById('editar-usina-cidade').value = usina.cidade || '';
+        document.getElementById('editar-usina-kwh').value = usina.kwh || '';
+        document.getElementById('editar-usina-valor').value = usina.valor || '';
+        document.getElementById('editar-usina-prazo').value = usina.prazo || 'à vista';
+        
+        modalEditarUsina.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+    } catch (error) {
+        console.error('Erro ao carregar usina:', error);
+        mostrarNotificacao('Erro ao carregar dados', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Função para fechar modal de edição de usina
+function fecharModalEditarUsina() {
+    modalEditarUsina.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    if (formEditarUsina) formEditarUsina.reset();
+}
+
+// Função para salvar alterações da usina
+async function salvarEdicaoUsina(event) {
+    event.preventDefault();
+    showLoading();
+    
+    try {
+        const id = document.getElementById('editar-usina-id').value;
+        const usinaAtualizada = {
+            nomeCliente: document.getElementById('editar-usina-nome').value,
+            contato: document.getElementById('editar-usina-contato').value,
+            cidade: document.getElementById('editar-usina-cidade').value,
+            kwh: document.getElementById('editar-usina-kwh').value,
+            valor: document.getElementById('editar-usina-valor').value,
+            prazo: document.getElementById('editar-usina-prazo').value,
+            dataEdicao: new Date().toISOString()
+        };
+        
+        await db.collection('orcamentos').doc(id).update(usinaAtualizada);
+        fecharModalEditarUsina();
+        await carregarUsinas();
+        mostrarNotificacao('Usina atualizada com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao atualizar usina:', error);
+        mostrarNotificacao('Erro ao atualizar usina', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ========== FUNÇÕES DE EDIÇÃO DE CONCLUÍDO ==========
+
+// Função para abrir modal de edição de concluído
+async function abrirModalEditarConcluido(id) {
+    showLoading();
+    
+    try {
+        const doc = await db.collection('orcamentos').doc(id).get();
+        
+        if (!doc.exists) {
+            mostrarNotificacao('Projeto não encontrado', 'error');
+            return;
+        }
+        
+        const projeto = doc.data();
+        
+        document.getElementById('editar-concluido-id').value = id;
+        document.getElementById('editar-concluido-nome').value = projeto.nomeCliente || '';
+        document.getElementById('editar-concluido-contato').value = projeto.contato || '';
+        document.getElementById('editar-concluido-cidade').value = projeto.cidade || '';
+        document.getElementById('editar-concluido-kwh').value = projeto.kwh || '';
+        document.getElementById('editar-concluido-valor').value = projeto.valor || '';
+        document.getElementById('editar-concluido-prazo').value = projeto.prazo || 'à vista';
+        
+        // Formatar data para o input date
+        if (projeto.dataConclusao) {
+            const data = new Date(projeto.dataConclusao);
+            const dataFormatada = data.toISOString().split('T')[0];
+            document.getElementById('editar-concluido-data').value = dataFormatada;
+        } else {
+            document.getElementById('editar-concluido-data').value = hoje;
+        }
+        
+        modalEditarConcluido.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+    } catch (error) {
+        console.error('Erro ao carregar projeto:', error);
+        mostrarNotificacao('Erro ao carregar dados', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Função para fechar modal de edição de concluído
+function fecharModalEditarConcluido() {
+    modalEditarConcluido.style.display = 'none';
+    document.body.style.overflow = 'auto';
+    if (formEditarConcluido) formEditarConcluido.reset();
+}
+
+// Função para salvar alterações do concluído
+async function salvarEdicaoConcluido(event) {
+    event.preventDefault();
+    showLoading();
+    
+    try {
+        const id = document.getElementById('editar-concluido-id').value;
+        const dataConclusao = document.getElementById('editar-concluido-data').value;
+        
+        const projetoAtualizado = {
+            nomeCliente: document.getElementById('editar-concluido-nome').value,
+            contato: document.getElementById('editar-concluido-contato').value,
+            cidade: document.getElementById('editar-concluido-cidade').value,
+            kwh: document.getElementById('editar-concluido-kwh').value,
+            valor: document.getElementById('editar-concluido-valor').value,
+            prazo: document.getElementById('editar-concluido-prazo').value,
+            dataConclusao: new Date(dataConclusao).toISOString(),
+            dataEdicao: new Date().toISOString()
+        };
+        
+        await db.collection('orcamentos').doc(id).update(projetoAtualizado);
+        fecharModalEditarConcluido();
+        await carregarConcluidos();
+        mostrarNotificacao('Projeto atualizado com sucesso!', 'success');
+        
+    } catch (error) {
+        console.error('Erro ao atualizar projeto:', error);
+        mostrarNotificacao('Erro ao atualizar projeto', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// ========== FUNÇÕES DE RENDERIZAÇÃO ==========
 
 // Renderizar orçamentos (ATUALIZADO com botão de editar)
 function renderizarOrcamentos(orcamentos) {
@@ -490,7 +641,7 @@ function renderizarOrcamentos(orcamentos) {
     `).join('');
 }
 
-// Renderizar tabela de usinas
+// Renderizar tabela de usinas (ATUALIZADO com botão de editar)
 function renderizarTabelaUsinas(usinas) {
     if (!usinasTableBody) return;
     
@@ -558,7 +709,10 @@ function renderizarTabelaUsinas(usinas) {
                 </td>
                 <td>
                     <div class="table-actions">
-                        <button class="btn-delete" onclick="excluirProjeto('${usina.id}', event)">
+                        <button class="btn-edit" onclick="abrirModalEditarUsina('${usina.id}')" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-delete" onclick="excluirProjeto('${usina.id}', event)" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -568,7 +722,7 @@ function renderizarTabelaUsinas(usinas) {
     }).join('');
 }
 
-// Renderizar tabela de concluídos
+// Renderizar tabela de concluídos (ATUALIZADO com botão de editar)
 function renderizarTabelaConcluidos(concluidos) {
     if (!concluidosTableBody) return;
     
@@ -595,7 +749,10 @@ function renderizarTabelaConcluidos(concluidos) {
                 <td>${concluido.prazo || 'à vista'}</td>
                 <td>
                     <div class="table-actions">
-                        <button class="btn-delete" onclick="excluirProjeto('${concluido.id}', event)">
+                        <button class="btn-edit" onclick="abrirModalEditarConcluido('${concluido.id}')" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-delete" onclick="excluirProjeto('${concluido.id}', event)" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -637,7 +794,7 @@ function atualizarContadorOrcamentos(count) {
     }
 }
 
-// Função para abrir o modal de orçamento
+// Função para abrir o modal de novo orçamento
 function abrirModal() {
     if (modal) {
         modal.style.display = 'flex';
@@ -645,7 +802,7 @@ function abrirModal() {
     }
 }
 
-// Função para fechar o modal de orçamento
+// Função para fechar o modal de novo orçamento
 function fecharModal() {
     if (modal) {
         modal.style.display = 'none';
@@ -654,7 +811,7 @@ function fecharModal() {
     }
 }
 
-// Fechar modal ao clicar fora
+// Fechar modais ao clicar fora
 window.addEventListener('click', (e) => {
     if (e.target === modal) {
         fecharModal();
@@ -662,13 +819,18 @@ window.addEventListener('click', (e) => {
     if (e.target === modalEditar) {
         fecharModalEditar();
     }
+    if (e.target === modalEditarUsina) {
+        fecharModalEditarUsina();
+    }
+    if (e.target === modalEditarConcluido) {
+        fecharModalEditarConcluido();
+    }
 });
 
-// Função para salvar orçamento no Firebase
+// Função para salvar novo orçamento no Firebase
 if (form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
         showLoading();
         
         try {
@@ -691,10 +853,7 @@ if (form) {
             };
             
             await db.collection('orcamentos').add(orcamento);
-            
-            // Recarregar orçamentos
             await carregarOrcamentos();
-            
             fecharModal();
             mostrarNotificacao('Orçamento salvo com sucesso!', 'success');
         } catch (error) {
@@ -706,15 +865,22 @@ if (form) {
     });
 }
 
-// Event listener para o formulário de edição
+// Event listeners para os formulários de edição
 if (formEditar) {
     formEditar.addEventListener('submit', salvarEdicao);
+}
+
+if (formEditarUsina) {
+    formEditarUsina.addEventListener('submit', salvarEdicaoUsina);
+}
+
+if (formEditarConcluido) {
+    formEditarConcluido.addEventListener('submit', salvarEdicaoConcluido);
 }
 
 // Função para aprovar orçamento
 async function aprovarOrcamento(id) {
     if (!confirm('Deseja aprovar este orçamento?')) return;
-    
     showLoading();
     
     try {
@@ -723,10 +889,8 @@ async function aprovarOrcamento(id) {
             dataAprovacao: new Date().toISOString()
         });
         
-        // Recarregar dados da aba atual
         const tabAtiva = document.querySelector('.tab-btn.active').dataset.tab;
         await carregarDados(tabAtiva);
-        
         mostrarNotificacao('Orçamento aprovado com sucesso!', 'success');
     } catch (error) {
         console.error('Erro ao aprovar orçamento:', error);
@@ -739,16 +903,13 @@ async function aprovarOrcamento(id) {
 // Função para rejeitar orçamento
 async function rejeitarOrcamento(id) {
     if (!confirm('Tem certeza que deseja rejeitar este orçamento?')) return;
-    
     showLoading();
     
     try {
         await db.collection('orcamentos').doc(id).delete();
         
-        // Recarregar dados da aba atual
         const tabAtiva = document.querySelector('.tab-btn.active').dataset.tab;
         await carregarDados(tabAtiva);
-        
         mostrarNotificacao('Orçamento rejeitado!', 'info');
     } catch (error) {
         console.error('Erro ao rejeitar orçamento:', error);
@@ -760,10 +921,7 @@ async function rejeitarOrcamento(id) {
 
 // Função para excluir projeto
 async function excluirProjeto(id, event) {
-    if (event) {
-        event.stopPropagation();
-    }
-    
+    if (event) event.stopPropagation();
     if (!confirm('Tem certeza que deseja excluir este projeto permanentemente?')) return;
     
     showLoading();
@@ -771,10 +929,8 @@ async function excluirProjeto(id, event) {
     try {
         await db.collection('orcamentos').doc(id).delete();
         
-        // Recarregar dados da aba atual
         const tabAtiva = document.querySelector('.tab-btn.active').dataset.tab;
         await carregarDados(tabAtiva);
-        
         mostrarNotificacao('Projeto excluído com sucesso!', 'info');
     } catch (error) {
         console.error('Erro ao excluir projeto:', error);
@@ -849,10 +1005,7 @@ function mostrarNotificacao(mensagem, tipo = 'info') {
             cor = '#3498db';
     }
     
-    notificacao.innerHTML = `
-        <i class="fas ${icone}"></i>
-        <span>${mensagem}</span>
-    `;
+    notificacao.innerHTML = `<i class="fas ${icone}"></i><span>${mensagem}</span>`;
     
     notificacao.style.position = 'fixed';
     notificacao.style.bottom = '20px';
@@ -884,7 +1037,6 @@ function mostrarNotificacao(mensagem, tipo = 'info') {
 
 // Inicializar a aplicação
 document.addEventListener('DOMContentLoaded', () => {
-    // Esconder elementos específicos inicialmente
     const dashboardCards = document.getElementById('dashboardCards');
     const usinasHeader = document.getElementById('usinasHeader');
     
@@ -894,15 +1046,13 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarOrcamentos();
 });
 
-// Fechar modal com tecla ESC
+// Fechar modais com tecla ESC
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        if (modal && modal.style.display === 'flex') {
-            fecharModal();
-        }
-        if (modalEditar && modalEditar.style.display === 'flex') {
-            fecharModalEditar();
-        }
+        if (modal && modal.style.display === 'flex') fecharModal();
+        if (modalEditar && modalEditar.style.display === 'flex') fecharModalEditar();
+        if (modalEditarUsina && modalEditarUsina.style.display === 'flex') fecharModalEditarUsina();
+        if (modalEditarConcluido && modalEditarConcluido.style.display === 'flex') fecharModalEditarConcluido();
     }
 });
 
@@ -915,5 +1065,9 @@ window.abrirModal = abrirModal;
 window.fecharModal = fecharModal;
 window.abrirModalEditar = abrirModalEditar;
 window.fecharModalEditar = fecharModalEditar;
+window.abrirModalEditarUsina = abrirModalEditarUsina;
+window.fecharModalEditarUsina = fecharModalEditarUsina;
+window.abrirModalEditarConcluido = abrirModalEditarConcluido;
+window.fecharModalEditarConcluido = fecharModalEditarConcluido;
 window.aplicarFiltros = aplicarFiltros;
 window.limparFiltros = limparFiltros;
